@@ -14,8 +14,11 @@ struct git_blame {
 	git_blame_options options;
 
 	git_blame__line *lines;
+	size_t num_lines;
 
 	/* Trivial context */
+	size_t current_line;
+	git_oid current_commit;
 };
 
 git_blame *git_blame__alloc(
