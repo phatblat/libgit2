@@ -11,6 +11,7 @@
 #include "git2/revwalk.h"
 #include "git2/tree.h"
 #include "git2/diff.h"
+#include "git2/blob.h"
 #include "util.h"
 #include "repository.h"
 
@@ -138,6 +139,11 @@ static int trivial_hunk_cb(
 	void *payload
 	)
 {
+	GIT_UNUSED(delta);
+	GIT_UNUSED(range);
+	GIT_UNUSED(header);
+	GIT_UNUSED(header_len);
+	GIT_UNUSED(payload);
 	printf("  Hunk:\n");
 	return 0;
 }
@@ -152,6 +158,7 @@ static int trivial_line_cb(
 {
 	char buf[1024] = {0};
 	git_blame *blame = (git_blame*)payload;
+	GIT_UNUSED(blame);
 
 	strncpy(buf, content, content_len-1);
 
@@ -181,7 +188,6 @@ static int walk_and_mark(git_blame *blame, git_revwalk *walk)
 		git_diff_list *diff = NULL;
 		git_diff_options diffopts = GIT_DIFF_OPTIONS_INIT;
 		git_diff_find_options diff_find_opts = GIT_DIFF_FIND_OPTIONS_INIT;
-		char *paths[1];
 
 		if ((error = git_commit_lookup(&commit, blame->repository, &oid)) < 0)
 			break;
@@ -203,8 +209,7 @@ static int walk_and_mark(git_blame *blame, git_revwalk *walk)
 
 		/* Configure the diff */
 		diffopts.context_lines = 0;
-		strcpy(paths[0], blame->path);
-		diffopts.pathspec.strings = paths;
+		diffopts.pathspec.strings = (char**)&blame->path;
 		diffopts.pathspec.count = 1;
 
 		/* Generate a diff between the two trees */
@@ -239,6 +244,39 @@ cleanup:
 	return error;
 }
 
+static int get_line_count(size_t *out, git_repository *repo, git_oid *commit_id, const char *path)
+{
+	int retval = -1;
+	git_commit *commit = NULL;
+	git_tree *tree = NULL;
+	git_tree_entry *tree_entry = NULL;
+	git_object *obj = NULL;
+
+	if (git_commit_lookup(&commit, repo, commit_id) < 0 ||
+	    git_commit_tree(&tree, commit) < 0 ||
+	    git_tree_entry_bypath(&tree_entry, tree, path) < 0 ||
+	    git_tree_entry_to_object(&obj, repo, tree_entry) < 0 ||
+	    git_object_type(obj) != GIT_OBJ_BLOB)
+		goto cleanup;
+
+	{
+		size_t count = 0;
+		const char *str = git_blob_rawcontent((git_blob*)obj);
+		while ((str = strchr(str+1, '\n')) != NULL)
+			count++;
+		if (out) *out = count;
+		retval = 0;
+	}
+	printf("%s has %d lines\n", path, *out);
+
+cleanup:
+	git_object_free(obj);
+	git_tree_entry_free(tree_entry);
+	git_tree_free(tree);
+	git_commit_free(commit);
+	return retval;
+}
+
 int git_blame_file(
 		git_blame **out,
 		git_repository *repo,
@@ -249,6 +287,7 @@ int git_blame_file(
 	git_blame_options normOptions = GIT_BLAME_OPTIONS_INIT;
 	git_blame *blame = NULL;
 	git_revwalk *walk = NULL;
+	size_t linecount;
 
 	if (!out || !repo || !path) return -1;
 	normalize_options(&normOptions, options, repo);
@@ -264,6 +303,11 @@ int git_blame_file(
 		 (error = git_revwalk_hide(walk, &normOptions.oldest_commit)) < 0)
 		goto on_error;
 	git_revwalk_sorting(walk, GIT_SORT_TIME);
+
+	if ((error = get_line_count(&linecount, repo, &normOptions.newest_commit, path)) < 0)
+		goto on_error;
+	blame->lines = git__calloc(linecount, sizeof(git_blame__line));
+	if (!blame->lines) goto on_error;
 
 	if ((error = walk_and_mark(blame, walk)) < 0)
 		goto on_error;
