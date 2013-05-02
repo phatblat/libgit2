@@ -232,7 +232,9 @@ static char *diff_strdup_prefix(git_pool *pool, const char *prefix)
 int git_diff_delta__cmp(const void *a, const void *b)
 {
 	const git_diff_delta *da = a, *db = b;
-	int val = strcmp(da->old_file.path, db->old_file.path);
+	int val = 0;
+	if (da->old_file.path && db->old_file.path)
+		val = strcmp(da->old_file.path, db->old_file.path);
 	return val ? val : ((int)da->status - (int)db->status);
 }
 

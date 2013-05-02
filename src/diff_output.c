@@ -133,8 +133,9 @@ static int diff_delta_is_binary_by_attr(
 	if (update_file_is_binary_by_attr(ctxt->repo, &delta->old_file) < 0)
 		return -1;
 
-	mirror_new = (delta->new_file.path == delta->old_file.path ||
-		ctxt->diff->strcomp(delta->new_file.path, delta->old_file.path) == 0);
+	mirror_new = (delta->old_file.path &&
+					  (delta->new_file.path == delta->old_file.path ||
+						ctxt->diff->strcomp(delta->new_file.path, delta->old_file.path) == 0));
 	if (mirror_new)
 		delta->new_file.flags |= (delta->old_file.flags & KNOWN_BINARY_FLAGS);
 	else

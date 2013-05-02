@@ -663,7 +663,7 @@ int git_diff_find_similar(
 	}
 
 	if (num_rewrites > 0) {
-		assert(num_rewrites < diff->deltas.length);
+		assert(num_rewrites <= diff->deltas.length);
 
 		error = apply_splits_and_deletes(
 			diff, diff->deltas.length - num_rewrites);
