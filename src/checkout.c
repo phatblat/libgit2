@@ -16,6 +16,7 @@
 #include "git2/config.h"
 #include "git2/diff.h"
 #include "git2/submodule.h"
+#include "git2/sys/index.h"
 
 #include "refs.h"
 #include "repository.h"
@@ -138,7 +139,7 @@ static bool checkout_is_workdir_modified(
 		if (!sm_oid)
 			return false;
 
-		return (git_oid_cmp(&baseitem->oid, sm_oid) != 0);
+		return (git_oid__cmp(&baseitem->oid, sm_oid) != 0);
 	}
 
 	/* Look at the cache to decide if the workdir is modified.  If not,
@@ -149,7 +150,7 @@ static bool checkout_is_workdir_modified(
 		if (wditem->mtime.seconds == ie->mtime.seconds &&
 			wditem->mtime.nanoseconds == ie->mtime.nanoseconds &&
 			wditem->file_size == ie->file_size)
-			return (git_oid_cmp(&baseitem->oid, &ie->oid) != 0);
+			return (git_oid__cmp(&baseitem->oid, &ie->oid) != 0);
 	}
 
 	/* depending on where base is coming from, we may or may not know
@@ -163,7 +164,7 @@ static bool checkout_is_workdir_modified(
 			wditem->file_size, &oid) < 0)
 		return false;
 
-	return (git_oid_cmp(&baseitem->oid, &oid) != 0);
+	return (git_oid__cmp(&baseitem->oid, &oid) != 0);
 }
 
 #define CHECKOUT_ACTION_IF(FLAG,YES,NO) \
@@ -466,6 +467,7 @@ static int checkout_action(
 	int cmp = -1, act;
 	int (*strcomp)(const char *, const char *) = data->diff->strcomp;
 	int (*pfxcomp)(const char *str, const char *pfx) = data->diff->pfxcomp;
+	int error;
 
 	/* move workdir iterator to follow along with deltas */
 
@@ -489,8 +491,11 @@ static int checkout_action(
 			if (cmp == 0) {
 				if (wd->mode == GIT_FILEMODE_TREE) {
 					/* case 2 - entry prefixed by workdir tree */
-					if (git_iterator_advance_into(&wd, workdir) < 0)
-						goto fail;
+					if ((error = git_iterator_advance_into(&wd, workdir)) < 0) {
+						if (error != GIT_ENOTFOUND ||
+							git_iterator_advance(&wd, workdir) < 0)
+							goto fail;
+					}
 
 					*wditem_ptr = wd;
 					continue;
@@ -710,8 +715,8 @@ static int blob_content_to_file(
 	git_vector filters = GIT_VECTOR_INIT;
 
 	/* Create a fake git_buf from the blob raw data... */
-	filtered.ptr = blob->odb_object->raw.data;
-	filtered.size = blob->odb_object->raw.len;
+	filtered.ptr  = (void *)git_blob_rawcontent(blob);
+	filtered.size = (size_t)git_blob_rawsize(blob);
 	/* ... and make sure it doesn't get unexpectedly freed */
 	dont_free_filtered = true;
 
@@ -950,6 +955,9 @@ static int checkout_remove_the_old(
 	uint32_t flg = GIT_RMDIR_EMPTY_PARENTS |
 		GIT_RMDIR_REMOVE_FILES | GIT_RMDIR_REMOVE_BLOCKERS;
 
+	if (data->opts.checkout_strategy & GIT_CHECKOUT_SKIP_LOCKED_DIRECTORIES)
+		flg |= GIT_RMDIR_SKIP_NONEMPTY;
+
 	git_buf_truncate(&data->path, data->workdir_len);
 
 	git_vector_foreach(&data->diff->deltas, i, delta) {
@@ -1119,7 +1127,6 @@ static int checkout_data_init(
 	git_checkout_opts *proposed)
 {
 	int error = 0;
-	git_config *cfg;
 	git_repository *repo = git_iterator_owner(target);
 
 	memset(data, 0, sizeof(*data));
@@ -1130,9 +1137,6 @@ static int checkout_data_init(
 	}
 
 	if ((error = git_repository__ensure_not_bare(repo, "checkout")) < 0)
-		return error;
-
-	if ((error = git_repository_config__weakptr(&cfg, repo)) < 0)
 		return error;
 
 	data->repo = repo;
@@ -1147,7 +1151,10 @@ static int checkout_data_init(
 
 	/* refresh config and index content unless NO_REFRESH is given */
 	if ((data->opts.checkout_strategy & GIT_CHECKOUT_NO_REFRESH) == 0) {
-		if ((error = git_config_refresh(cfg)) < 0)
+		git_config *cfg;
+
+		if ((error = git_repository_config__weakptr(&cfg, repo)) < 0 ||
+			(error = git_config_refresh(cfg)) < 0)
 			goto cleanup;
 
 		/* if we are checking out the index, don't reload,
@@ -1184,19 +1191,13 @@ static int checkout_data_init(
 
 	data->pfx = git_pathspec_prefix(&data->opts.paths);
 
-	error = git_config_get_bool(&data->can_symlink, cfg, "core.symlinks");
-	if (error < 0) {
-		if (error != GIT_ENOTFOUND)
-			goto cleanup;
-
-		/* If "core.symlinks" is not found anywhere, default to true. */
-		data->can_symlink = true;
-		giterr_clear();
-		error = 0;
-	}
+	if ((error = git_repository__cvar(
+			 &data->can_symlink, repo, GIT_CVAR_SYMLINKS)) < 0)
+		goto cleanup;
 
 	if (!data->opts.baseline) {
 		data->opts_free_baseline = true;
+
 		error = checkout_lookup_head_tree(&data->opts.baseline, repo);
 
 		if (error == GIT_EORPHANEDHEAD) {

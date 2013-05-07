@@ -11,6 +11,7 @@
 #include "config.h"
 #include "refspec.h"
 #include "refs.h"
+#include "remote.h"
 
 #include "git2/branch.h"
 
@@ -184,7 +185,7 @@ int git_branch_move(
 		git_buf_cstr(&old_config_section),
 		git_buf_cstr(&new_config_section))) < 0)
 		goto done;
-	
+
 	if ((error = git_reference_rename(out, branch, git_buf_cstr(&new_reference_name), force)) < 0)
 		goto done;
 
@@ -275,6 +276,8 @@ int git_branch_upstream__name(
 			goto cleanup;
 
 	if (!*remote_name || !*merge_name) {
+		giterr_set(GITERR_REFERENCE,
+			"branch '%s' does not have an upstream", canonical_branch_name);
 		error = GIT_ENOTFOUND;
 		goto cleanup;
 	}
@@ -283,12 +286,10 @@ int git_branch_upstream__name(
 		if ((error = git_remote_load(&remote, repo, remote_name)) < 0)
 			goto cleanup;
 
-		refspec = git_remote_fetchspec(remote);
-		if (refspec == NULL
-			|| refspec->src == NULL
-			|| refspec->dst == NULL) {
-				error = GIT_ENOTFOUND;
-				goto cleanup;
+		refspec = git_remote__matching_refspec(remote, merge_name);
+		if (!refspec) {
+			error = GIT_ENOTFOUND;
+			goto cleanup;
 		}
 
 		if (git_refspec_transform_r(&buf, refspec, merge_name) < 0)
@@ -333,11 +334,8 @@ static int remote_name(git_buf *buf, git_repository *repo, const char *canonical
 		if ((error = git_remote_load(&remote, repo, remote_list.strings[i])) < 0)
 			continue;
 
-		fetchspec = git_remote_fetchspec(remote);
-
-		/* Defensivly check that we have a fetchspec */
-		if (fetchspec &&
-			git_refspec_dst_matches(fetchspec, canonical_branch_name)) {
+		fetchspec = git_remote__matching_dst_refspec(remote, canonical_branch_name);
+		if (fetchspec) {
 			/* If we have not already set out yet, then set
 			 * it to the matching remote name. Otherwise
 			 * multiple remotes match this reference, and it
@@ -346,6 +344,9 @@ static int remote_name(git_buf *buf, git_repository *repo, const char *canonical
 				remote_name = remote_list.strings[i];
 			} else {
 				git_remote_free(remote);
+
+				giterr_set(GITERR_REFERENCE,
+					"Reference '%s' is ambiguous", canonical_branch_name);
 				error = GIT_EAMBIGUOUS;
 				goto cleanup;
 			}
@@ -358,6 +359,8 @@ static int remote_name(git_buf *buf, git_repository *repo, const char *canonical
 		git_buf_clear(buf);
 		error = git_buf_puts(buf, remote_name);
 	} else {
+		giterr_set(GITERR_REFERENCE,
+			"Could not determine remote for '%s'", canonical_branch_name);
 		error = GIT_ENOTFOUND;
 	}
 
@@ -377,7 +380,7 @@ int git_branch_remote_name(char *buffer, size_t buffer_len, git_repository *repo
 	if (buffer)
 		git_buf_copy_cstr(buffer, buffer_len, &buf);
 
-	ret = git_buf_len(&buf) + 1;
+	ret = (int)git_buf_len(&buf) + 1;
 	git_buf_free(&buf);
 
 	return ret;
@@ -494,8 +497,11 @@ int git_branch_set_upstream(git_reference *branch, const char *upstream_name)
 		local = 1;
 	else if (git_branch_lookup(&upstream, repo, upstream_name, GIT_BRANCH_REMOTE) == 0)
 		local = 0;
-	else
+	else {
+		giterr_set(GITERR_REFERENCE,
+			"Cannot set upstream for branch '%s'", shortname);
 		return GIT_ENOTFOUND;
+	}
 
 	/*
 	 * If it's local, the remote is "." and the branch name is
@@ -515,16 +521,17 @@ int git_branch_set_upstream(git_reference *branch, const char *upstream_name)
 		goto on_error;
 
 	if (local) {
-		if (git_buf_puts(&value, git_reference_name(branch)) < 0)
+		git_buf_clear(&value);
+		if (git_buf_puts(&value, git_reference_name(upstream)) < 0)
 			goto on_error;
 	} else {
 		/* Get the remoe-tracking branch's refname in its repo */
 		if (git_remote_load(&remote, repo, git_buf_cstr(&value)) < 0)
 			goto on_error;
 
-		fetchspec = git_remote_fetchspec(remote);
+		fetchspec = git_remote__matching_dst_refspec(remote, git_reference_name(upstream));
 		git_buf_clear(&value);
-		if (git_refspec_transform_l(&value, fetchspec, git_reference_name(upstream)) < 0)
+		if (!fetchspec || git_refspec_transform_l(&value, fetchspec, git_reference_name(upstream)) < 0)
 			goto on_error;
 
 		git_remote_free(remote);
