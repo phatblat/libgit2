@@ -28,7 +28,8 @@ Pod::Spec.new do |spec|
   spec.preserve_paths = "Authors",
   spec.libraries = "z"
   spec.xcconfig = {
-    "HEADER_SEARCH_PATHS" => "\"$(PODS_ROOT)/libgit2/include\" \"$(PODS_ROOT)/libgit2/src\""
+    "HEADER_SEARCH_PATHS" => "\"$(PODS_ROOT)/libgit2/include\" \"$(PODS_ROOT)/libgit2/src\"",
+    "CLANG_ENABLE_MODULES" => "NO"
   }
   spec.requires_arc = false
 end
