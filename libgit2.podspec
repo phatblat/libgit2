@@ -20,7 +20,8 @@ Pod::Spec.new do |spec|
     "**/include/git2/inttypes.h",
     "**/include/git2/stdint.h",
     "**/src/win32/**",
-    "**/hash_win32.*"
+    "**/hash_win32.*",
+    "**/src/amiga/**"
   spec.public_header_files = "include/**/*.h"
   spec.preserve_paths = "Authors",
   spec.libraries = "z"
