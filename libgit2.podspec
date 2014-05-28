@@ -23,6 +23,8 @@ Pod::Spec.new do |spec|
     "**/hash_win32.*",
     "**/src/amiga/**"
   spec.public_header_files = "include/**/*.h"
+  # Preserve the layout of headers in the include directory
+  spec.header_mappings_dir = "include"
   spec.preserve_paths = "Authors",
   spec.libraries = "z"
   spec.xcconfig = {
