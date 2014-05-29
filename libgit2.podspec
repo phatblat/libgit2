@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name = "libgit2"
-  spec.version = "0.18.0beta0.1"
+  spec.version = "0.19.0"
   spec.summary = "The libgit2 Library."
   spec.homepage = "http://libgit2.github.com"
   spec.license = {
@@ -10,7 +10,7 @@ Pod::Spec.new do |spec|
   spec.authors = "See AUTHORS file",
   spec.source = {
     :git => "https://github.com/libgit2/libgit2.git",
-    :commit => "2ff4469afc1e3e142d68c46e3c15e889fe32582a"
+    :tag => "v#{spec.version}"
   }
   spec.source_files =
     "deps/http-parser/*.{h,c}",
