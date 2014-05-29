@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name = "libgit2"
-  spec.version = "0.18.0beta0"
+  spec.version = "0.18.0beta0.1"
   spec.summary = "The libgit2 Library."
   spec.homepage = "http://libgit2.github.com"
   spec.license = {
@@ -28,7 +28,7 @@ Pod::Spec.new do |spec|
   spec.preserve_paths = "Authors",
   spec.libraries = "z"
   spec.xcconfig = {
-    "OTHER_CFLAGS" => "-v", #-isystem \"$(PODS_ROOT)/BuildHeaders/src\"",
+    "OTHER_CFLAGS" => "-v", # For debugging #include
     "USE_HEADERMAP" => "NO",
     "HEADER_SEARCH_PATHS" => "\"$(PODS_ROOT)/BuildHeaders/src\"",
     "CLANG_ENABLE_MODULES" => "NO"
