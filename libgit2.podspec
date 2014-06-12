@@ -7,6 +7,31 @@ Pod::Spec.new do |s|
     provided as a re-entrant linkable library with a solid API, allowing you to
     write native speed custom Git applications in any language which supports C
     bindings.
+
+    # Setup
+
+    Note that at present, after CocoaPods is done installing libgit2 the target
+    build will fail due to a header path ordering issue. The current workaround
+    is to add the following post_install hook to your `Podfile`.
+
+    ```
+    post_install do |installer|
+      # Reorder HEADER_SEARCH_PATHS for libgit2
+      target = installer.project.targets.find { |t| t.to_s == "Pods-libgit2" }
+      target.build_configurations.each do |config|
+        # Value will be empty initially since all settings come from xcconfig files
+        # Prime it with $(inherited)
+        s = config.build_settings['HEADER_SEARCH_PATHS'] ||= ['$(inherited)']
+
+        # Insert new value at the start of HEADER_SEARCH_PATHS
+        s.unshift('${PODS_LIBGIT__HEADER_SEARCH_PATHS}')
+
+        config.build_settings['HEADER_SEARCH_PATHS'] = s
+      end
+    end
+    ```
+
+    Better solutions welcome via [pull request](https://github.com/phatblat/Podspecs) :)
   DESC
   s.homepage      = "http://libgit2.github.com"
   s.license       = {
