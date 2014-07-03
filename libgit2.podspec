@@ -66,4 +66,7 @@ Pod::Spec.new do |s|
     "HEADER_SEARCH_PATHS" => "\"$(PODS_ROOT)/BuildHeaders/src\"",
     "CLANG_ENABLE_MODULES" => "NO"
   }
+  s.compiler_flags = '-DGIT_SSL'
+
+  s.dependency 'OpenSSL', '1.0.1'
 end
