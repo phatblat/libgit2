@@ -58,6 +58,8 @@ Pod::Spec.new do |s|
   s.header_mappings_dir = "include" # Preserve include/git2
   s.preserve_paths = "AUTHORS",
 
+  s.ios.deployment_target = "5.0"
+  s.osx.deployment_target = "10.7"
   s.libraries = "z"
   s.requires_arc = false
   s.xcconfig = {
