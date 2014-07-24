@@ -70,5 +70,5 @@ Pod::Spec.new do |s|
   }
   s.compiler_flags = '-DGIT_SSL'
 
-  s.dependency 'OpenSSL', '1.0.1'
+  s.dependency 'OpenSSL'
 end
