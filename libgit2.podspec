@@ -8,6 +8,8 @@ Pod::Spec.new do |s|
     write native speed custom Git applications in any language which supports C
     bindings.
 
+    Podspec maintained by Ben Chatelain <benchatelain@gmail.com>.
+
     # Setup
 
     Note that at present, after CocoaPods is done installing libgit2 the target
