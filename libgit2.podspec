@@ -19,7 +19,7 @@ Pod::Spec.new do |s|
     ```
     post_install do |installer|
       # Reorder HEADER_SEARCH_PATHS for libgit2
-      target = installer.project.targets.find { |t| t.to_s == "Pods-libgit2" }
+      target = installer.project.targets.find { |t| t.to_s.end_with?("libgit2") }
       target.build_configurations.each do |config|
         # Value will be empty initially since all settings come from xcconfig files
         # Prime it with $(inherited)
