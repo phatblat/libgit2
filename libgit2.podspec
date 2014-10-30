@@ -48,8 +48,8 @@ Pod::Spec.new do |s|
   }
   s.source_files =
     "deps/http-parser/*.{h,c}",
-    "src/**/*.{h,c}",
-    "include/**/*.h"
+    "src/**/*.{h,c}"
+#     "include/**/*.h"
   s.exclude_files =
     "**/include/git2/inttypes.h",
     "**/include/git2/stdint.h",
@@ -57,6 +57,8 @@ Pod::Spec.new do |s|
     "**/hash_win32.*",
     "**/src/amiga/**"
   s.public_header_files = "include/**/*.h"
+  s.private_header_files = "src/**/*.h"
+#   s.header_dir = "zzz_public"
   s.header_mappings_dir = "include" # Preserve include/git2
   s.preserve_paths = "AUTHORS",
 
@@ -66,9 +68,9 @@ Pod::Spec.new do |s|
   s.requires_arc = false
   s.xcconfig = {
     "OTHER_CFLAGS" => "-v", # For debugging #include
-    "USE_HEADERMAP" => "NO",
-    "HEADER_SEARCH_PATHS" => "\"$(PODS_ROOT)/BuildHeaders/src\"",
-    "CLANG_ENABLE_MODULES" => "NO"
+#     "USE_HEADERMAP" => "NO",
+#    "HEADER_SEARCH_PATHS" => "\"$(SRCROOT)/Pods/Headers/Build/libgit2\"",
+#     "CLANG_ENABLE_MODULES" => "NO"
   }
   s.compiler_flags = '-DGIT_SSL', '-DGIT_SSH'
 
