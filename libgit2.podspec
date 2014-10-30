@@ -26,7 +26,7 @@ Pod::Spec.new do |s|
   }
   s.source_files =
     "deps/http-parser/*.{h,c}",
-    "src/**/*.{h,c}",
+    "src/**/*.{h,c}"
 
   # Ignore incompatible platforms
   s.exclude_files =
@@ -39,6 +39,9 @@ Pod::Spec.new do |s|
   # Include headers in the correct places
   s.public_header_files = "include/**/*.h"
   s.private_header_files = "src/**/*.h"
+#   s.header_dir = "zzz_public"
+  s.header_mappings_dir = "include" # Preserve include/git2
+  s.preserve_paths = "AUTHORS",
 
   # Preserve include/git2 folder structure
   s.header_mappings_dir = "include"
