@@ -8,39 +8,17 @@ Pod::Spec.new do |s|
     write native speed custom Git applications in any language which supports C
     bindings.
 
+    _This version of the Podspec is unstable. Experimenting with various options to get it to build correctly._
+
     Podspec maintained by Ben Chatelain <benchatelain@gmail.com>.
-
-    # Setup
-
-    Note that at present, after CocoaPods is done installing libgit2 the target
-    build will fail due to a header path ordering issue. The current workaround
-    is to add the following post_install hook to your `Podfile`.
-
-    ```
-    post_install do |installer|
-      # Reorder HEADER_SEARCH_PATHS for libgit2
-      target = installer.project.targets.find { |t| t.to_s.end_with?("libgit2") }
-      target.build_configurations.each do |config|
-        # Value will be empty initially since all settings come from xcconfig files
-        # Prime it with $(inherited)
-        s = config.build_settings['HEADER_SEARCH_PATHS'] ||= ['$(inherited)']
-
-        # Insert new value at the start of HEADER_SEARCH_PATHS
-        s.unshift('${PODS_LIBGIT__HEADER_SEARCH_PATHS}')
-
-        config.build_settings['HEADER_SEARCH_PATHS'] = s
-      end
-    end
-    ```
-
-    Better solutions welcome via [pull request](https://github.com/phatblat/Podspecs) :)
   DESC
   s.homepage      = "http://libgit2.github.com"
   s.license       = {
     :type => "GPL v2 (with linking exception)",
     :file => "COPYING"
   }
-  s.authors = "See AUTHORS file",
+  s.authors = "See AUTHORS file"
+  s.preserve_paths = "AUTHORS"
 
   s.source = {
     :git => "https://github.com/libgit2/libgit2.git",
@@ -49,30 +27,56 @@ Pod::Spec.new do |s|
   s.source_files =
     "deps/http-parser/*.{h,c}",
     "src/**/*.{h,c}"
-#     "include/**/*.h"
+
+  # Ignore incompatible platforms
   s.exclude_files =
-    "**/include/git2/inttypes.h",
-    "**/include/git2/stdint.h",
-    "**/src/win32/**",
-    "**/hash_win32.*",
-    "**/src/amiga/**"
+    "include/git2/inttypes.h",
+    "include/git2/stdint.h",
+    "src/amiga/**",
+    "src/hash/hash_win32.*",
+    "src/win32/**"
+
+  # Include headers in the correct places
   s.public_header_files = "include/**/*.h"
   s.private_header_files = "src/**/*.h"
-#   s.header_dir = "zzz_public"
-  s.header_mappings_dir = "include" # Preserve include/git2
-  s.preserve_paths = "AUTHORS",
+
+  # Preserve include/git2 folder structure
+  s.header_mappings_dir = "include"
 
   s.ios.deployment_target = "5.0"
   s.osx.deployment_target = "10.7"
-  s.libraries = "z"
+
   s.requires_arc = false
+
   s.xcconfig = {
-    "OTHER_CFLAGS" => "-v", # For debugging #include
-#     "USE_HEADERMAP" => "NO",
-#    "HEADER_SEARCH_PATHS" => "\"$(SRCROOT)/Pods/Headers/Build/libgit2\"",
-#     "CLANG_ENABLE_MODULES" => "NO"
+    # -v        -> Debug #include
+    # -isysroot -> WIP prevent "redefinition of 'entry'" errors from iPhoneOS.sdk/usr/include/search.h
+    "OTHER_CFLAGS" => "-v", # -isysroot /dev/null",
+
+    # WIP include tmp dir with symlinks to necessary includes from iPhoneOS.sdk/usr/include
+    # "HEADER_SEARCH_PATHS" => "/tmp/libgit2-Pod",
+
+    # Headermap info
+    # http://stackoverflow.com/questions/2596695/controlling-which-project-header-file-xcode-will-include
+    # "USE_HEADERMAP" => "NO",
+    # "HEADERMAP_INCLUDES_FLAT_ENTRIES_FOR_TARGET_BEING_BUILT" => "NO",
+
+    # From CocoaPods 0.33 or less
+    # "HEADER_SEARCH_PATHS" => "\"$(SRCROOT)/Pods/Headers/Build/libgit2\"",
+
+    # CocoaPods 0.34+
+    # DOES NOT FIX: Pods-Octopad-ObjectiveGit-prefix.pch:5:9: fatal error: 'Pods-Octopad-environment.h' file not found
+    # "HEADER_SEARCH_PATHS" => "\"$(SRCROOT)/Target Support Files/Pods-Octopad\"",
+
+    # This prevents "redefinition of 'entry'" errors in src/indexer.c
+    # However, it introduces: Pods-Octopad-ObjectiveGit-prefix.pch:5:9: fatal error: 'Pods-Octopad-environment.h' file not found
+    # "CLANG_ENABLE_MODULES" => "NO"
   }
+
+  # Enable the SSL and SSH features
   s.compiler_flags = '-DGIT_SSL', '-DGIT_SSH'
+
+  s.libraries = "z"
 
   s.dependency 'OpenSSL'
   s.dependency 'libssh2'
