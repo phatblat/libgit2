@@ -20,7 +20,7 @@
 
 #define UINT31_MAX (0x7FFFFFFF)
 
-struct entry {
+struct git_entry {
 	git_oid oid;
 	uint32_t crc;
 	uint32_t offset;
@@ -93,8 +93,8 @@ static int parse_header(struct git_pack_header *hdr, struct git_pack_file *pack)
 
 static int objects_cmp(const void *a, const void *b)
 {
-	const struct entry *entrya = a;
-	const struct entry *entryb = b;
+	const struct git_entry *entrya = a;
+	const struct git_entry *entryb = b;
 
 	return git_oid__cmp(&entrya->oid, &entryb->oid);
 }
@@ -260,7 +260,7 @@ static int store_object(git_indexer *idx)
 	int i, error;
 	khiter_t k;
 	git_oid oid;
-	struct entry *entry;
+	struct git_entry *entry;
 	git_off_t entry_size;
 	struct git_pack_entry *pentry;
 	git_hash_ctx *ctx = &idx->hash_ctx;
@@ -313,7 +313,7 @@ on_error:
 	return -1;
 }
 
-static int save_entry(git_indexer *idx, struct entry *entry, struct git_pack_entry *pentry, git_off_t entry_start)
+static int save_entry(git_indexer *idx, struct git_entry *entry, struct git_pack_entry *pentry, git_off_t entry_start)
 {
 	int i, error;
 	khiter_t k;
@@ -347,7 +347,7 @@ static int hash_and_save(git_indexer *idx, git_rawobj *obj, git_off_t entry_star
 {
 	git_oid oid;
 	size_t entry_size;
-	struct entry *entry;
+	struct git_entry *entry;
 	struct git_pack_entry *pentry = NULL;
 
 	entry = git__calloc(1, sizeof(*entry));
@@ -647,7 +647,7 @@ static void seek_back_trailer(git_indexer *idx)
 static int inject_object(git_indexer *idx, git_oid *id)
 {
 	git_odb_object *obj;
-	struct entry *entry;
+	struct git_entry *entry;
 	struct git_pack_entry *pentry = NULL;
 	git_oid foo = {{0}};
 	unsigned char hdr[64];
@@ -874,7 +874,7 @@ int git_indexer_commit(git_indexer *idx, git_transfer_progress *stats)
 	int error;
 	struct git_pack_idx_header hdr;
 	git_buf filename = GIT_BUF_INIT;
-	struct entry *entry;
+	struct git_entry *entry;
 	git_oid trailer_hash, file_hash;
 	git_hash_ctx ctx;
 	git_filebuf index_file = {0};
