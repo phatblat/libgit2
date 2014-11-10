@@ -43,7 +43,7 @@ Pod::Spec.new do |s|
   # Preserve include/git2 folder structure
   s.header_mappings_dir = "include"
 
-  s.ios.deployment_target = "5.0"
+  s.ios.deployment_target = "6.0"
   s.osx.deployment_target = "10.7"
 
   s.requires_arc = false
@@ -78,6 +78,6 @@ Pod::Spec.new do |s|
 
   s.libraries = "z"
 
-  s.dependency 'OpenSSL'
+  s.dependency 'OpenSSL-Universal'
   s.dependency 'libssh2'
 end
