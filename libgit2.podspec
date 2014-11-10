@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name          = "libgit2"
-  s.version       = "0.21.2"
+  s.version       = "0.21.0"
   s.summary       = "The libgit2 Library."
   s.description   = <<-DESC
     libgit2 is a portable, pure C implementation of the Git core methods
@@ -22,7 +22,8 @@ Pod::Spec.new do |s|
 
   s.source = {
     :git => "https://github.com/libgit2/libgit2.git",
-    :tag => "v#{s.version}"
+    :commit => "4bb6ffb",
+    #:tag => "v#{s.version}"
   }
   s.source_files =
     "deps/http-parser/*.{h,c}",
