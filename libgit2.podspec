@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name          = "libgit2"
-  s.version       = "0.21.0-rc1"
+  s.version       = "0.21.2"
   s.summary       = "The libgit2 Library."
   s.description   = <<-DESC
     libgit2 is a portable, pure C implementation of the Git core methods
