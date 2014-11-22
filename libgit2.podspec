@@ -82,6 +82,6 @@ Pod::Spec.new do |s|
 
   s.libraries = "z"
 
-  s.dependency 'OpenSSL-Universal'
+  s.dependency 'OpenSSL'
   s.dependency 'libssh2'
 end
