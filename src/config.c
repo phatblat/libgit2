@@ -18,6 +18,7 @@
 #endif
 
 #include <ctype.h>
+#include <inttypes.h>
 
 void git_config_entry_free(git_config_entry *entry)
 {

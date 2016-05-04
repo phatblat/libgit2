@@ -13,7 +13,7 @@
 #ifdef _MSC_VER
 #	include "inttypes.h"
 #else
-#	include <inttypes.h>
+//#	include <inttypes.h>
 #endif
 
 #ifdef __cplusplus
