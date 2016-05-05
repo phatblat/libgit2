@@ -26,7 +26,8 @@
  GIT_END_DECL
 /** This check is needed for importing this file in an iOS/OS X framework throws an error in Xcode otherwise.*/
 #elif !defined(__CLANG_INTTYPES_H)
-# include <inttypes.h>
+// Disabling import due to segfault 11 from swiftc
+//# include <inttypes.h>
 #endif
 
 #ifdef DOCURIUM
