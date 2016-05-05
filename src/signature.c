@@ -34,13 +34,27 @@ static bool contains_angle_brackets(const char *input)
 	return strchr(input, '<') != NULL || strchr(input, '>') != NULL;
 }
 
+static bool is_crud(unsigned char c)
+{
+	return  c <= 32  ||
+		c == '.' ||
+		c == ',' ||
+		c == ':' ||
+		c == ';' ||
+		c == '<' ||
+		c == '>' ||
+		c == '"' ||
+		c == '\\' ||
+		c == '\'';
+}
+
 static char *extract_trimmed(const char *ptr, size_t len)
 {
-	while (len && git__isspace(ptr[0])) {
+	while (len && is_crud((unsigned char)ptr[0])) {
 		ptr++; len--;
 	}
 
-	while (len && git__isspace(ptr[len - 1])) {
+	while (len && is_crud((unsigned char)ptr[len - 1])) {
 		len--;
 	}
 
@@ -65,10 +79,9 @@ int git_signature_new(git_signature **sig_out, const char *name, const char *ema
 	GITERR_CHECK_ALLOC(p);
 
 	p->name = extract_trimmed(name, strlen(name));
+	GITERR_CHECK_ALLOC(p->name);
 	p->email = extract_trimmed(email, strlen(email));
-
-	if (p->name == NULL || p->email == NULL)
-		return -1; /* oom */
+	GITERR_CHECK_ALLOC(p->email);
 
 	if (p->name[0] == '\0' || p->email[0] == '\0') {
 		git_signature_free(p);

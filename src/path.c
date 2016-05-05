@@ -10,8 +10,9 @@
 #include "repository.h"
 #ifdef GIT_WIN32
 #include "win32/posix.h"
-#include "win32/buffer.h"
+#include "win32/w32_buffer.h"
 #include "win32/w32_util.h"
+#include "win32/version.h"
 #else
 #include <dirent.h>
 #endif
@@ -525,6 +526,17 @@ bool git_path_isfile(const char *path)
 	return S_ISREG(st.st_mode) != 0;
 }
 
+bool git_path_islink(const char *path)
+{
+	struct stat st;
+
+	assert(path);
+	if (p_lstat(path, &st) < 0)
+		return false;
+
+	return S_ISLNK(st.st_mode) != 0;
+}
+
 #ifdef GIT_WIN32
 
 bool git_path_is_empty_dir(const char *path)
@@ -693,8 +705,7 @@ int git_path_resolve_relative(git_buf *path, size_t ceiling)
 	char *base, *to, *from, *next;
 	size_t len;
 
-	if (!path || git_buf_oom(path))
-		return -1;
+	GITERR_CHECK_ALLOC_BUF(path);
 
 	if (ceiling > path->size)
 		ceiling = path->size;
@@ -1085,7 +1096,7 @@ int git_path_direach(
 #if defined(GIT_WIN32) && !defined(__MINGW32__)
 
 /* Using _FIND_FIRST_EX_LARGE_FETCH may increase performance in Windows 7
- * and better.  Prior versions will ignore this.
+ * and better.
  */
 #ifndef FIND_FIRST_EX_LARGE_FETCH
 # define FIND_FIRST_EX_LARGE_FETCH 2
@@ -1098,6 +1109,10 @@ int git_path_diriter_init(
 {
 	git_win32_path path_filter;
 	git_buf hack = {0};
+
+	static int is_win7_or_later = -1;
+	if (is_win7_or_later < 0)
+		is_win7_or_later = git_has_win32_version(6, 1, 0);
 
 	assert(diriter && path);
 
@@ -1122,11 +1137,11 @@ int git_path_diriter_init(
 
 	diriter->handle = FindFirstFileExW(
 		path_filter,
-		FindExInfoBasic,
+		is_win7_or_later ? FindExInfoBasic : FindExInfoStandard,
 		&diriter->current,
 		FindExSearchNameMatch,
 		NULL,
-		FIND_FIRST_EX_LARGE_FETCH);
+		is_win7_or_later ? FIND_FIRST_EX_LARGE_FETCH : 0);
 
 	if (diriter->handle == INVALID_HANDLE_VALUE) {
 		giterr_set(GITERR_OS, "Could not open directory '%s'", path);
@@ -1161,7 +1176,11 @@ static int diriter_update_paths(git_path_diriter *diriter)
 	diriter->path[path_len-1] = L'\0';
 
 	git_buf_truncate(&diriter->path_utf8, diriter->parent_utf8_len);
-	git_buf_putc(&diriter->path_utf8, '/');
+
+	if (diriter->parent_utf8_len > 0 &&
+		diriter->path_utf8.ptr[diriter->parent_utf8_len-1] != '/')
+		git_buf_putc(&diriter->path_utf8, '/');
+
 	git_buf_put_w(&diriter->path_utf8, diriter->current.cFileName, filename_len);
 
 	if (git_buf_oom(&diriter->path_utf8))
@@ -1310,7 +1329,11 @@ int git_path_diriter_next(git_path_diriter *diriter)
 #endif
 
 	git_buf_truncate(&diriter->path, diriter->parent_len);
-	git_buf_putc(&diriter->path, '/');
+
+	if (diriter->parent_len > 0 &&
+		diriter->path.ptr[diriter->parent_len-1] != '/')
+		git_buf_putc(&diriter->path, '/');
+
 	git_buf_put(&diriter->path, filename, filename_len);
 
 	if (git_buf_oom(&diriter->path))
@@ -1375,7 +1398,7 @@ int git_path_dirload(
 	git_vector *contents,
 	const char *path,
 	size_t prefix_len,
-	unsigned int flags)
+	uint32_t flags)
 {
 	git_path_diriter iter = GIT_PATH_DIRITER_INIT;
 	const char *name;
@@ -1606,9 +1629,12 @@ static bool verify_component(
 		!verify_dotgit_ntfs(repo, component, len))
 		return false;
 
+	/* don't bother rerunning the `.git` test if we ran the HFS or NTFS
+	 * specific tests, they would have already rejected `.git`.
+	 */
 	if ((flags & GIT_PATH_REJECT_DOT_GIT_HFS) == 0 &&
 		(flags & GIT_PATH_REJECT_DOT_GIT_NTFS) == 0 &&
-		(flags & GIT_PATH_REJECT_DOT_GIT) &&
+		(flags & GIT_PATH_REJECT_DOT_GIT_LITERAL) &&
 		len == 4 &&
 		component[0] == '.' &&
 		(component[1] == 'g' || component[1] == 'G') &&
@@ -1624,6 +1650,8 @@ GIT_INLINE(unsigned int) dotgit_flags(
 	unsigned int flags)
 {
 	int protectHFS = 0, protectNTFS = 0;
+
+	flags |= GIT_PATH_REJECT_DOT_GIT_LITERAL;
 
 #ifdef __APPLE__
 	protectHFS = 1;
@@ -1670,4 +1698,20 @@ bool git_path_isvalid(
 	}
 
 	return verify_component(repo, start, (c - start), flags);
+}
+
+int git_path_normalize_slashes(git_buf *out, const char *path)
+{
+	int error;
+	char *p;
+
+	if ((error = git_buf_puts(out, path)) < 0)
+		return error;
+
+	for (p = out->ptr; *p; p++) {
+		if (*p == '\\')
+			*p = '/';
+	}
+
+	return 0;
 }
